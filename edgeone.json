@@ -1,6 +1,6 @@
 {
   "outputDirectory": "./frontend",
-  "installCommand": "python3 -m ensurepip --upgrade && python3 -m pip install --upgrade pip && python3 -m pip install -r requirements.txt && python3 -m pip install -r cloud-functions/requirements.txt",
+  "installCommand": "python3 -m ensurepip --upgrade && python3 -m pip install -r requirements.txt && python3 -m pip install -r cloud-functions/requirements.txt",
   "buildCommand": "python3 scripts/prepare_edgeone.py",
   "cloudFunctions": {
     "python": {
