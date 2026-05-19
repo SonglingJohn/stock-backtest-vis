@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>A股回测工作台</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" id="workspace">
+        <aside class="side-panel" id="sidePanel">
+          <button class="collapse-tab" id="expandButton" type="button" title="展开参数">展开参数</button>
+          <form class="input-panel" id="backtestForm">
+            <div class="panel-head">
+              <h1>A股回测</h1>
+              <button class="icon-button" id="collapseButton" type="button" title="收起参数">‹</button>
+            </div>
+
+            <section class="field-group">
+              <div class="group-title">股票配置</div>
+              <div class="stock-list" id="stockList"></div>
+              <button class="add-row" id="addStockButton" type="button">+</button>
+            </section>
+
+            <section class="field-group">
+              <div class="group-title">买入假设</div>
+              <div class="two-cols">
+                <label>
+                  <span>买入方式</span>
+                  <select id="buyMethod">
+                    <option value="lump_sum">一次性买</option>
+                    <option value="annual">年定投</option>
+                  </select>
+                </label>
+                <label>
+                  <span>金额</span>
+                  <input id="amount" type="number" min="1" step="1" inputmode="numeric" value="100000">
+                </label>
+              </div>
+              <button class="year-trigger" id="yearTrigger" type="button">
+                <span>回测区间</span>
+                <strong id="yearRangeText">2014 - 2026</strong>
+              </button>
+              <div class="year-picker" id="yearPicker" hidden>
+                <label>
+                  <span>开始年份</span>
+                  <input id="startYear" type="number" min="1990" max="2026" value="2014">
+                </label>
+                <label>
+                  <span>结束年份</span>
+                  <input id="endYear" type="number" min="1990" max="2026" value="2026">
+                </label>
+              </div>
+            </section>
+
+            <div class="actions">
+              <button class="primary" id="playButton" type="submit">播放回测</button>
+              <button class="secondary" id="resultButton" type="button">直接看结果</button>
+            </div>
+
+            <p class="source-note">数据源 AKShare；价格优先使用后复权收盘价；年定投按每年首个交易日买入。</p>
+
+            <section class="market-index-panel" id="marketIndexPanel" aria-label="中国宽基指数">
+              <div class="market-index-card down" draggable="true" data-index-code="000001" data-index-name="上证指数">
+                <span class="market-index-name">上证指数</span>
+                <strong>4131.53</strong>
+                <span>-3.86&nbsp;&nbsp;-0.09%</span>
+              </div>
+              <div class="market-index-card down" draggable="true" data-index-code="399001" data-index-name="深证成指">
+                <span class="market-index-name">深证成指</span>
+                <strong>15530.23</strong>
+                <span>-31.14&nbsp;&nbsp;-0.20%</span>
+              </div>
+              <div class="market-index-card down" draggable="true" data-index-code="399006" data-index-name="创业板">
+                <span class="market-index-name">创业板</span>
+                <strong>3914.88</strong>
+                <span>-14.18&nbsp;&nbsp;-0.36%</span>
+              </div>
+              <div class="market-index-card up" draggable="true" data-index-code="000300" data-index-name="沪深300">
+                <span class="market-index-name">沪深300</span>
+                <strong>3928.44</strong>
+                <span>+18.62&nbsp;&nbsp;+0.48%</span>
+              </div>
+              <div class="market-index-card up" draggable="true" data-index-code="000688" data-index-name="科创50">
+                <span class="market-index-name">科创50</span>
+                <strong>1008.16</strong>
+                <span>+6.20&nbsp;&nbsp;+0.62%</span>
+              </div>
+              <div class="market-index-card down" draggable="true" data-index-code="899050" data-index-name="北证50">
+                <span class="market-index-name">北证50</span>
+                <strong>1265.48</strong>
+                <span>-5.18&nbsp;&nbsp;-0.41%</span>
+              </div>
+            </section>
+          </form>
+        </aside>
+
+        <section class="stage">
+          <div class="chart-wrap">
+            <div class="selected-indexes" id="selectedIndexes">把左侧宽基指数拖到这里，可和股票一起对比收益曲线</div>
+            <svg id="chart" viewBox="0 0 1200 620" role="img" aria-label="估值曲线"></svg>
+            <div class="chart-empty" id="chartEmpty">等待回测数据</div>
+            <div class="final-result-overlay" id="finalResultOverlay" hidden></div>
+          </div>
+          <div class="timeline">
+            <button class="secondary small" id="pauseButton" type="button">暂停</button>
+            <input id="yearSlider" type="range" min="0" max="0" value="0">
+            <button class="secondary small" id="replayButton" type="button">看整体</button>
+          </div>
+          <section class="result-text" id="resultText"></section>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

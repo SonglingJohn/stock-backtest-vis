@@ -1,0 +1,6 @@
+.cache/
+cloud-functions/backend/
+.superpowers/
+__pycache__/
+*.pyc
+*.log
