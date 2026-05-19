@@ -19,10 +19,27 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def _writable_cache_root() -> Path:
+    for candidate in (_project_root() / ".cache", Path("/tmp/strategy-backtest/.cache")):
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            probe = candidate / ".write_probe"
+            probe.write_text("1", encoding="utf-8")
+            probe.unlink(missing_ok=True)
+            return candidate
+        except OSError:
+            continue
+    fallback = Path("/tmp/strategy-backtest/.cache")
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
 _ROOT = _project_root()
-CACHE_DIR = _ROOT / ".cache" / "prices"
-NAME_CACHE_FILE = _ROOT / ".cache" / "stock-names.json"
-MARKET_INDEX_CACHE_FILE = _ROOT / ".cache" / "market-indexes.json"
+_CACHE_ROOT = _writable_cache_root()
+CACHE_DIR = _CACHE_ROOT / "prices"
+NAME_CACHE_FILE = _CACHE_ROOT / "stock-names.json"
+MARKET_INDEX_CACHE_FILE = _CACHE_ROOT / "market-indexes.json"
+BUNDLED_NAMES_FILE = Path(__file__).resolve().parent / "stock_names.json"
 PRICE_ADJUST = "hfq"
 _REQUEST_TIMEOUT = 30
 
@@ -123,14 +140,20 @@ def load_a_share_names(cache_file: Path = NAME_CACHE_FILE) -> dict[str, str]:
     if cache_file.exists():
         return json.loads(cache_file.read_text(encoding="utf-8"))
 
+    if BUNDLED_NAMES_FILE.exists():
+        return json.loads(BUNDLED_NAMES_FILE.read_text(encoding="utf-8"))
+
     try:
         names = _fetch_a_share_names_em()
     except Exception:
         return {}
 
     if names:
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        cache_file.write_text(json.dumps(names, ensure_ascii=False, indent=2), encoding="utf-8")
+        try:
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            cache_file.write_text(json.dumps(names, ensure_ascii=False, indent=2), encoding="utf-8")
+        except OSError:
+            pass
     return names
 
 
@@ -143,7 +166,8 @@ def resolve_stock_query(query: str, names: dict[str, str] | None = None) -> dict
     code_part = "".join(ch for ch in text if ch.isdigit())
     if len(code_part) >= 6:
         symbol = normalize_symbol(code_part)
-        return {"symbol": symbol, "name": names.get(symbol, symbol)}
+        name = names.get(symbol) or _lookup_name(symbol, text)
+        return {"symbol": symbol, "name": name}
 
     exact = [(symbol, name) for symbol, name in names.items() if name == text]
     if exact:
@@ -155,7 +179,42 @@ def resolve_stock_query(query: str, names: dict[str, str] | None = None) -> dict
         symbol, name = partial[0]
         return {"symbol": symbol, "name": name}
 
+    resolved = _resolve_by_suggest(text)
+    if resolved:
+        return resolved
+
     raise ValueError(f"没有找到股票：{text}")
+
+
+def _lookup_name(symbol: str, query: str) -> str:
+    if not any(ch.isalpha() or "\u4e00" <= ch <= "\u9fff" for ch in query):
+        return symbol
+    resolved = _resolve_by_suggest(query)
+    if resolved and resolved["symbol"] == symbol:
+        return resolved["name"]
+    return symbol
+
+
+def _resolve_by_suggest(query: str) -> dict[str, str] | None:
+    response = requests.get(
+        "https://searchapi.eastmoney.com/api/suggest/get",
+        params={"input": query, "type": "14"},
+        headers=_EM_HEADERS,
+        timeout=_REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+    items = (response.json().get("QuotationCodeTable") or {}).get("Data") or []
+    for item in items:
+        classify = str(item.get("Classify", "AStock"))
+        if classify not in ("", "AStock"):
+            continue
+        code = "".join(ch for ch in str(item.get("Code", "")) if ch.isdigit())
+        if len(code) < 6:
+            continue
+        symbol = normalize_symbol(code)
+        name = str(item.get("Name", "")).strip() or symbol
+        return {"symbol": symbol, "name": name}
+    return None
 
 
 def load_stock_info(symbol: str, cache_dir: Path = CACHE_DIR) -> dict[str, Any]:
